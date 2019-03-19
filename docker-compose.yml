@@ -1,0 +1,14 @@
+version: '3.0'
+
+services:
+  db:
+    image: postgres
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:3300
+    volumes:
+      - .:/code
+    ports:
+      - "3300:3300"
+    depends_on:
+      - db

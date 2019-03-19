@@ -1,16 +1,15 @@
+up:
+	docker-compose up --build
 
-run:
-	python3 manage.py runserver;
-
-migrate:
-	python3 manage.py makemigrations; \
-	python3 manage.py migrate;
-
-flush:
-	python3 manage.py flush;
+build:
+	sudo docker-compose run web django-admin startproject cheat .
 
 createsuperuser:
-	python3 manage.py createsuperuser;
+	docker-compose exec web python manage.py createsuperuser
+migrate:
+	docker-compose exec web python manage.py makemigrations; \
+	docker-compose exec web python manage.py migrate;
 
-update_games:
-	python3 manage.py runscript update_games
+down:
+	docker-compose down
+

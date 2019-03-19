@@ -1,0 +1,4 @@
+* * * * *  python manage.py runscript update_games >> /var/log/cron.log 2>&1
+* * * * *  sleep 5; python manage.py runscript update_games >> /var/log/cron.log 2>&1
+
+

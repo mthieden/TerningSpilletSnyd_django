@@ -17,4 +17,5 @@ def run():
             username=e['brugernavn'],
             port=e['port']).save()
 
+    print("update succesfull")
 

@@ -1,9 +1,5 @@
 run:
 	docker-compose up -d --build $(filter-out $@,$(MAKECMDGOALS))
-%:
-	@:
-
-do:
 	docker-compose exec web python manage.py $(filter-out $@,$(MAKECMDGOALS))
 %:
 	@:
