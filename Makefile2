@@ -1,0 +1,183 @@
+run:
+	docker-compose up -d --build $(filter-out $@,$(MAKECMDGOALS))
+%:
+	@:
+
+do:
+	docker-compose exec web python manage.py $(filter-out $@,$(MAKECMDGOALS))
+%:
+	@:
+
+test:
+	docker-compose exec web python manage.py test $(filter-out $@,$(MAKECMDGOALS))
+%:
+	@:
+
+DB_NAME := $(shell docker ps | grep --only-matching 'team42automation_db.*')
+ifeq ($(DB_NAME),)
+DB_NAME := "team42automation_db_1"
+endif
+
+createsuperuser:
+	docker-compose exec web python manage.py createsuperuser
+
+down:
+	docker-compose down
+
+heroku-download:
+	heroku pg:backups:download --app team42api
+
+dumpdb:
+	docker-compose exec web python -Wi manage.py dumpdata --exclude=contenttypes --exclude=auth.Permission -v=3 > initial_db.json
+
+dumpdb_requests:
+	docker-compose exec web python -Wi manage.py dumpdata --exclude=contenttypes --exclude=auth.Permission -v=3 database_models.request > request_pos.json
+
+pg_dump:
+	docker-compose exec db bash -c 'pg_dump -U postgres postgres > /var/lib/postgresql/data/db.bak'
+
+pg_load:
+	docker exec -i $(DB_NAME) pg_restore -U postgres --clean --exit-on-error --no-acl --no-owner -h localhost --verbose --dbname=postgres < latest.dump
+
+pg_dump_sql:
+	docker exec -i $(DB_NAME) pg_dump -U postgres --clean --no-acl --no-owner -h localhost --verbose --dbname=postgres >madsdb.bak
+
+pg_load_sql:
+	docker exec -i $(DB_NAME) psql -U postgres -h localhost < data_base_dump
+
+update_staging_db:
+	heroku pg:copy team42api::DATABASE_URL DATABASE_URL --app team42apidev --confirm team42apidev
+
+restore_dump:
+	docker-compose stop web
+	docker-compose exec db dropdb -U postgres postgres
+	docker-compose exec db createdb -U postgres postgres
+	docker-compose exec db bash -c 'psql -U postgres postgres < /var/lib/postgresql/data/db.bak'
+	docker-compose up -ye
+
+clone_and_overwrite_local_db:
+	make heroku-prod-back-up
+	make heroku-download
+	make pg_load
+
+coverage:
+	docker-compose exec web coverage run --source='.' manage.py test --parallel --keep
+
+coverage-no-parallel:
+	docker-compose exec web coverage run --source='.' manage.py test
+
+cov-report:
+	docker-compose exec web coverage report
+
+cov-html:
+	docker-compose exec web coverage html
+
+fullcoverage:
+	docker-compose exec web python manage.py makemigrations; \
+	docker-compose exec web python manage.py migrate; \
+	docker-compose exec web coverage run --source='.' manage.py test;
+
+
+migrate:
+	docker-compose exec web python manage.py makemigrations; \
+	docker-compose exec web python manage.py migrate;
+
+
+clean-pyc:
+	find . -name '*.pyc' -exec rm --force {} +
+	find . -name '*.pyo' -exec rm --force {} +
+	find . -name '*~' -exec rm --force {} + 	# only for cool-guys who use vim
+
+psql:
+	docker exec -it $(DB_NAME) psql -U postgres
+
+reset-db:
+	docker-compose exec web python manage.py flush
+	docker-compose exec web python manage.py makemigrations; \
+	docker-compose exec web python manage.py migrate; \
+	docker-compose exec web python manage.py createsuperuser;
+
+
+destroy-db:
+	find './database_models/migrations/' -name '*.py' -not -name '__init__.py' -type f -delete;
+	find './database_models/migrations/' -name '*.pyc' -not -name '__init__.py' -type f -delete;
+	rm -f db.sqlite3;
+	docker-compose exec web python manage.py flush
+	docker-compose exec web python manage.py makemigrations; \
+	docker-compose exec web python manage.py migrate; \
+	docker-compose exec web python manage.py createsuperuser;
+
+
+load-fixtures:
+	docker-compose exec web python manage.py loaddata \
+	  automation/fixtures/test_new_pos.json \
+	  automation/fixtures/PatentFormCanvas.json \
+	  middletier/fixtures/exchangerates.json \
+	  middletier/fixtures/renewals.json;
+
+shortlog:
+	git shortlog -s | sort -nr
+
+
+bash:
+	docker-compose exec web bash
+
+heroku-shell:
+	heroku run python manage.py shell --app team42api
+
+
+heroku-local:
+	docker-compose -f docker-compose.yml -f docker-compose-production.yml up -d
+
+heroku-prod-back-up:
+	heroku pg:backups:capture --app team42api
+	heroku pg:backups:url --app team42api | cat
+
+docker-delete-all:
+	docker stop `docker ps -qa` \
+	docker rm `docker ps -qa` \
+	docker rmi -f `docker images -qa` \
+	docker network rm `docker network ls -q` \
+	docker system prune -a;
+
+
+jupyter:
+	docker-compose run -p 8888:8888 web jupyter notebook automation/management/jupyternotebooks --ip 0.0.0.0 --allow-root
+
+profile:
+	mkdir -p output
+	docker-compose -f docker-compose.yml -f docker-compose-profiling.yml up
+
+make:
+	@echo "#######################################################################"
+	@echo "#######################################################################"
+	@echo "#######################################################################"
+	@echo "#######################################################################"
+	@echo "%%#####################################################################"
+	@echo "%%%%###################################################################"
+	@echo "%%%%%%%################################################################"
+	@echo "%%%%%%%%%%#############################################################"
+	@echo "%%%%%%%%%%%%%##########################################################"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%(.   *##########/.     .,(######################"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%*      *%####%(.            ,####################"
+	@echo "%%%%%%%%%%%%%%%%%%%%%#       /%%%%%(      ,*,.     .###################"
+	@echo "%%%%%%%%%%%%%%%%%%%%%,      .#%%%%%,     #%%%%/     /##################"
+	@echo "%%%%%%%%%%%%%%%%%%%%(       (%%%%%%*    *%%%%%,     (##################"
+	@echo "%%%%%%%%%%%%%%%%%%%%.      ,%%%%%%%%%##%%%#(,      *###################"
+	@echo "%%%%%%%%%%%%%%%%%%%/       #%%%/     /%(,         (%###################"
+	@echo "%%%%%%%%%%%%%%%%%%#.      *%%%(       ...     .*#%#####################"
+	@echo "%%%%%%%%%%%%%%%%%%*      .#%%%(       ...../#%%%%######################"
+	@echo "%%%%%%%%%%%%%%%%%(....   /####/       ...,%%%%%%%%#####################"
+	@echo "%%%%%%%%%%%%%%%%%,...........         ...,////////(####################"
+	@echo "%%%%%%%%%%%%%%%%/................... .,,,.......... /%#################"
+	@echo "%%%%%%%%%%%%%%%%#,....................,,,,..........(%#################"
+	@echo "%%%%%%%%%%%%%%%%%%%###########(.......(%%%%%%%%%%%%%%%%################"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#.......(%%%%%%%%%%%%%%%%################"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#,.....,#%%%%%%%%%%%%%%%%%%##############"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#,,,,,,,#%%%%%%%%%%%%%%%%%%%%############"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%#(/(#%%%%%%%%%%%%%%%%%%%%%%%%%#########"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%######"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%###"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+	@echo "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
