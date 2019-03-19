@@ -21,7 +21,7 @@ class User(models.Model):
 
 class Game(models.Model):
     players = models.PositiveIntegerField(
-        default=1, validators=[MinValueValidator(1),
+        default=2, validators=[MinValueValidator(2),
                                MaxValueValidator(6)])
     dice = models.PositiveIntegerField(
         default=1, validators=[MinValueValidator(1),
@@ -43,7 +43,6 @@ class Game(models.Model):
         if self.username == None or self.username == '':
             self.username = self.user.username
         resp = create_game(self.dice, self.players, self.username, self.user.token)
-        resp.raise_for_status()
         super(Game, self).save()
 
     def remove(self):
