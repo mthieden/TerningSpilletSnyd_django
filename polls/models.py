@@ -33,16 +33,16 @@ class Game(models.Model):
         primary_key=True)
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    username = models.CharField(max_length=200, blank=True)
     created_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.username + " : " + str(self.port)
+        return self.user.username + " : " + str(self.port)
 
     def save(self, force_insert=False, force_update=False, using=None):
-        if self.username == None or self.username == '':
-            self.username = self.user.username
-        resp = create_game(self.dice, self.players, self.username, self.user.token)
+        self.user.token = login(self.user.username, self.user.password)
+        resp = create_game(self.dice, self.players, self.user.username, self.user.token)
+        resp.raise_for_status()
+        self.port=resp.json()["port"]
         super(Game, self).save()
 
     def remove(self):

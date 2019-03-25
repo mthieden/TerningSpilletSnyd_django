@@ -36,7 +36,7 @@ def close_game(port, username, token):
         "http://130.225.170.205:8080/REST_Terning_server/closeGame",
         data=json.dumps(data))
 
-def close_games():
+def close_games(username, token):
     {"token": token, "username": username}
     r = requests.post(
         "http://130.225.170.205:8080/REST_Terning_server/closeAllGames",

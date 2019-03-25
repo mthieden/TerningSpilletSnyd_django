@@ -15,7 +15,6 @@ def run():
                 players=e['spillere'],
                 dice=e['terninger'],
                 user=user,
-                username=e['brugernavn'],
                 port=e['port']).save()
     except Exception as e:
         print(e)
